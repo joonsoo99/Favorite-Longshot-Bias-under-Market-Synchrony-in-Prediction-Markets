@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+panels/
+output/
+download/raw_output/
