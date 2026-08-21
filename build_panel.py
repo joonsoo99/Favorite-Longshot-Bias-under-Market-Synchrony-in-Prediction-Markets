@@ -93,26 +93,26 @@ FINAL_COLS = ["episode_id", "asset", "slot_epoch", "token", "ttm", "obs_epoch",
               "outcome", "log_odds", "delta_logit", "poly_vol_prev"]
 
 for tf, cfg in TF_CFG.items():
-    print(f"\n{'='*60}\n  [{tf}] 패널 빌드\n{'='*60}")
+    print(f"\n{'='*60}\n  [{tf}] build panel\n{'='*60}")
 
     df_raw = pd.read_pickle(os.path.join(RAW_DIR, cfg["raw"]))
-    print(f"  raw: {len(df_raw):,}행  assets: {sorted(df_raw['asset'].unique())}")
+    print(f"  raw: {len(df_raw):,} rows  assets: {sorted(df_raw['asset'].unique())}")
 
     n0 = len(df_raw)
     df_raw = filter_complete_and_simultaneous(df_raw, cfg["window_minutes"])
-    print(f"  완결성+동시성 필터: {n0:,} → {len(df_raw):,}  "
-          f"(제거 {n0-len(df_raw):,}, {(n0-len(df_raw))/n0*100:.2f}%)")
+    print(f"  completeness+simultaneity filter: {n0:,} → {len(df_raw):,}  "
+          f"(dropped {n0-len(df_raw):,}, {(n0-len(df_raw))/n0*100:.2f}%)")
 
     panel = expand_price_history(df_raw, cfg["window_minutes"])
     panel = add_delta_logit(panel)
     panel = add_poly_vol_prev(panel, df_raw)
     panel = panel[FINAL_COLS].sort_values(["slot_epoch", "asset", "ttm"]).reset_index(drop=True)
 
-    print(f"  최종: {panel.shape}  TTM 범위: {panel['ttm'].min()}~{panel['ttm'].max()}")
-    print(f"  null 개수:\n{panel.isnull().sum().to_string()}")
+    print(f"  final: {panel.shape}  TTM range: {panel['ttm'].min()}~{panel['ttm'].max()}")
+    print(f"  null counts:\n{panel.isnull().sum().to_string()}")
 
     out_path = os.path.join(OUT_DIR, f"panel_{tf}.pkl")
     panel.to_pickle(out_path)
-    print(f"  저장 완료 → {out_path}")
+    print(f"  saved → {out_path}")
 
-print(f"\n{'='*60}\n  모든 패널 빌드 완료\n{'='*60}")
+print(f"\n{'='*60}\n  all panels built\n{'='*60}")

@@ -33,7 +33,7 @@ def pending_count(tf: str) -> int:
             df_miss = pd.read_pickle(missing_path)
             attempted_keys |= set(zip(df_miss["asset"], df_miss["slot_epoch"]))
         except Exception as e:
-            log.warning(f"[queue] missing 로그 로드 실패(무시하고 진행): {e}")
+            log.warning(f"[queue] failed to load missing-log (ignoring, continuing): {e}")
 
     all_jobs = [(a, s) for s in slots for a in cfg.assets if s not in cfg.missing_slots]
     todo = [(a, s) for a, s in all_jobs if (cfg.asset_labels[a], s) not in attempted_keys]
@@ -45,25 +45,25 @@ def wait_until_done(tf: str, poll_sec: int = 60) -> None:
     while True:
         n = pending_count(tf)
         if n == 0:
-            log.info(f"[queue] {tf} 완료 확인됨 (남은 작업 0건)")
+            log.info(f"[queue] {tf} confirmed done (0 jobs remaining)")
             return
-        log.info(f"[queue] {tf} 아직 {n:,}건 남음 → {poll_sec}초 후 재확인")
+        log.info(f"[queue] {tf} still has {n:,} jobs left → rechecking in {poll_sec}s")
         time.sleep(poll_sec)
 
 
 def main():
-    log.info("[queue] 60m 완료 대기 시작 (60m 자체는 다른 프로세스가 처리 중)")
+    log.info("[queue] waiting for 60m to finish (running in another process)")
     wait_until_done("60m")
 
-    log.info("[queue] 15m 시작")
+    log.info("[queue] starting 15m")
     m.run("15m")
-    log.info("[queue] 15m 완료")
+    log.info("[queue] 15m done")
 
-    log.info("[queue] 5m 시작")
+    log.info("[queue] starting 5m")
     m.run("5m")
-    log.info("[queue] 5m 완료")
+    log.info("[queue] 5m done")
 
-    log.info("[queue] 전체 큐 완료 (60m→15m→5m)")
+    log.info("[queue] full queue done (60m→15m→5m)")
 
 
 if __name__ == "__main__":

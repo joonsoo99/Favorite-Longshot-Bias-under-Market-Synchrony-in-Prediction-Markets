@@ -29,9 +29,9 @@ NEED = ["log_odds", "lo_x_ttm", "delta_logit", "csd_raw"]
 rows = []
 
 for tf in TF_CFG:
-    print(f"\n{'='*60}\n  [{tf}] 로드 및 분위 추정\n{'='*60}")
+    print(f"\n{'='*60}\n  [{tf}] load + decile fit\n{'='*60}")
     df = load_analysis_panel(tf, extra_need=NEED)
-    print(f"  샘플: {len(df):,}행  에피소드: {df['episode_id'].nunique():,}개")
+    print(f"  sample: {len(df):,} rows  episodes: {df['episode_id'].nunique():,}")
     print(f"  CSD: median={df['csd_raw'].median():.3f}  "
           f"IQR=[{df['csd_raw'].quantile(.25):.3f}, {df['csd_raw'].quantile(.75):.3f}]")
 
@@ -55,7 +55,7 @@ for tf in TF_CFG:
 df_res = pd.DataFrame(rows)
 csv_path = os.path.join(OUT_DIR, "csd_quantile_slope.csv")
 df_res.to_csv(csv_path, index=False, encoding="utf-8-sig")
-print(f"\n결과 저장 → {csv_path}")
+print(f"\nresults saved → {csv_path}")
 
 # figsize width 7.5in ~= 190mm = Elsevier double-column (full page width) spec
 fig, ax = plt.subplots(figsize=(7.5, 5.5), dpi=FIG_DPI)
@@ -83,4 +83,4 @@ ax.legend(frameon=False, loc="upper right", fontsize=9)
 fig.tight_layout()
 base_path = os.path.join(OUT_DIR, "FIG2")
 save_fig(fig, base_path)
-print(f"플롯 저장 → {base_path}.png / .pdf")
+print(f"plot saved → {base_path}.png / .pdf")

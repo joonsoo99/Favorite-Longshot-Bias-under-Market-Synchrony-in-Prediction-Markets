@@ -79,7 +79,7 @@ def _get_with_retry(url: str, params: Optional[dict] = None) -> Optional[request
             last_exc = e
             time.sleep(HTTP_BACKOFF_S * (2 ** attempt))
     if last_exc is not None:
-        log.debug(f"HTTP 재시도 {HTTP_RETRIES}회 모두 실패: {url} ({last_exc})")
+        log.debug(f"HTTP retry failed after {HTTP_RETRIES} attempts: {url} ({last_exc})")
     return None
 
 
@@ -112,10 +112,10 @@ def fetch_price_history(token_id: str, start_ts: int, end_ts: int, fidelity: int
 # Explicit failure instead of silently defaulting to index 0 when "Up" is missing.
 def resolve_yes_no_index(outcomes: list, slug: str) -> Optional[tuple[int, int]]:
     if outcomes is None:
-        log.warning(f"outcomes가 None: slug={slug}")
+        log.warning(f"outcomes is None: slug={slug}")
         return None
     if len(outcomes) != 2:
-        log.warning(f"outcomes 개수가 2가 아님(binary market 가정 위반): slug={slug} outcomes={outcomes}")
+        log.warning(f"outcomes has != 2 entries (violates binary-market assumption): slug={slug} outcomes={outcomes}")
         return None
     if "Up" in outcomes:
         yes_idx = outcomes.index("Up")
@@ -123,9 +123,9 @@ def resolve_yes_no_index(outcomes: list, slug: str) -> Optional[tuple[int, int]]
         lower_map = {str(o).lower(): i for i, o in enumerate(outcomes)}
         if "up" in lower_map:
             yes_idx = lower_map["up"]
-            log.warning(f"'Up' 대소문자 변형 감지 (구제함): slug={slug} outcomes={outcomes}")
+            log.warning(f"'Up' case variant detected (recovered): slug={slug} outcomes={outcomes}")
         else:
-            log.warning(f"outcomes에 'Up'이 없어 슬롯 스킵: slug={slug} outcomes={outcomes}")
+            log.warning(f"no 'Up' in outcomes, skipping slot: slug={slug} outcomes={outcomes}")
             return None
     no_idx = 1 - yes_idx
     return yes_idx, no_idx
@@ -230,10 +230,10 @@ def load_existing(pkl_path: Path) -> tuple[pd.DataFrame, set]:
         try:
             df = pd.read_pickle(pkl_path)
             existing = set(zip(df["asset"], df["slot_epoch"]))
-            log.info(f"[Load] 기존 {len(df):,}행 로드 ({len(existing):,}개 (asset,slot) 쌍)")
+            log.info(f"[Load] loaded {len(df):,} existing rows ({len(existing):,} (asset,slot) pairs)")
             return df, existing
         except Exception as e:
-            log.warning(f"[Load] pkl 로드 실패: {e} → 빈 상태로 시작")
+            log.warning(f"[Load] failed to load pkl: {e} → starting empty")
     return pd.DataFrame(), set()
 
 
@@ -317,7 +317,7 @@ def collect_price_history_one_row(cfg: TFConfig, row: dict):
 
 def save_merged(pkl_path: Path, df_existing: pd.DataFrame, df_new: pd.DataFrame) -> pd.DataFrame:
     if df_new.empty:
-        log.info("[Save] 신규 데이터 없음, 저장 스킵")
+        log.info("[Save] no new data, skipping save")
         return df_existing
     df_out = df_new if df_existing.empty else (
         pd.concat([df_existing, df_new], ignore_index=True)
@@ -326,7 +326,7 @@ def save_merged(pkl_path: Path, df_existing: pd.DataFrame, df_new: pd.DataFrame)
     )
     df_out = df_out.sort_values(["asset", "slot_epoch"]).reset_index(drop=True)
     df_out.to_pickle(pkl_path)
-    log.info(f"[Save] 저장 완료 → {pkl_path} (총 {len(df_out):,}행, 신규 {len(df_new):,}행)")
+    log.info(f"[Save] saved → {pkl_path} (total {len(df_out):,} rows, {len(df_new):,} new)")
     return df_out
 
 
@@ -368,8 +368,8 @@ def _process_chunk(cfg: TFConfig, chunk_jobs: list[tuple[str, int]],
                     (price_ok if ok else price_miss).append(res)
                     pbar.update(1)
 
-    log.info(f"  청크 결과: meta 성공 {len(meta_ok):,}/실패 {len(meta_miss):,}  "
-              f"→ price 성공 {len(price_ok):,}/실패 {len(price_miss):,}")
+    log.info(f"  chunk result: meta ok {len(meta_ok):,}/fail {len(meta_miss):,}  "
+              f"→ price ok {len(price_ok):,}/fail {len(price_miss):,}")
 
     _save_missing(missing_path, meta_miss + price_miss)
 
@@ -400,24 +400,24 @@ def run(tf: str) -> None:
     todo_jobs = [(a, s) for a, s in all_jobs
                  if (cfg.asset_labels[a], s) not in existing_keys]
 
-    log.info(f"[Filter] 전체 {len(all_jobs):,}개 중 기존 {len(existing_keys):,}개 스킵 → 신규 {len(todo_jobs):,}개")
+    log.info(f"[Filter] {len(all_jobs):,} total, skipping {len(existing_keys):,} existing → {len(todo_jobs):,} new")
 
     if not todo_jobs:
-        log.info("[Done] 수집할 신규 슬롯 없음")
+        log.info("[Done] no new slots to collect")
         return
 
     n_chunks = (len(todo_jobs) + CHUNK_SIZE - 1) // CHUNK_SIZE
     for i in range(0, len(todo_jobs), CHUNK_SIZE):
         chunk = todo_jobs[i:i + CHUNK_SIZE]
         chunk_no = i // CHUNK_SIZE + 1
-        log.info(f"[{tf}] 청크 {chunk_no}/{n_chunks} ({len(chunk):,}건) 처리 중...")
+        log.info(f"[{tf}] chunk {chunk_no}/{n_chunks} ({len(chunk):,} jobs)...")
         df_existing = _process_chunk(cfg, chunk, df_existing, pkl_path, missing_path)
 
-    log.info(f"[{tf}] 전체 완료 (총 {n_chunks}개 청크)")
+    log.info(f"[{tf}] all done ({n_chunks} chunks total)")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Polymarket UP/DOWN 시장 수집기")
+    parser = argparse.ArgumentParser(description="Polymarket UP/DOWN market collector")
     parser.add_argument("--tf", choices=["5m", "15m", "60m", "all"], required=True)
     args = parser.parse_args()
 

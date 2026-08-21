@@ -39,4 +39,4 @@ for ax, (tf, fname) in zip(axes, TF_CFG.items()):
 fig.tight_layout()
 base_path = os.path.join(OUT_DIR, "FIG1")
 save_fig(fig, base_path)
-print(f"저장 완료 → {base_path}.png / .pdf")
+print(f"saved → {base_path}.png / .pdf")

@@ -73,7 +73,7 @@ for ax, tf in zip(axes, TF_CFG):
         res = fit(y, ep, df[feats])
         trade = trade_mask(res, price, EDGE_THRESH)
         if trade.sum() == 0:
-            print(f"  [{mname}] 거래 없음")
+            print(f"  [{mname}] no trades")
             rows.append({"tf": tf, "model": mname, **EMPTY_ROW})
             continue
         cost, pnl = trade_cost_pnl(trade, price, y, FEE)
@@ -101,19 +101,19 @@ for ax, tf in zip(axes, TF_CFG):
 fig.tight_layout()
 base_path = os.path.join(OUT_DIR, "FIG3")
 save_fig(fig, base_path)
-print(f"\n플롯 저장 → {base_path}.png / .pdf")
+print(f"\nplot saved → {base_path}.png / .pdf")
 
 out = pd.DataFrame(rows)[["tf", "model", "n_trades", "total_cost", "total_pnl", "avg_pnl",
                            "roi_pct", "win_rate", "mdd_dollar", "ann_pnl", "calmar"]]
 csv_path = os.path.join(OUT_DIR, "backtest_results.csv")
 out.to_csv(csv_path, index=False, encoding="utf-8-sig")
 
-print(f"\n{'='*96}\n  Table 5+6 통합: 백테스트 성과 및 위험조정 지표\n{'='*96}")
+print(f"\n{'='*96}\n  Table 5+6 combined: backtest performance and risk-adjusted metrics\n{'='*96}")
 header = (f"{'tf':>4} {'model':<14} {'trades':>9} {'ROI%':>7} {'win%':>6} "
-          f"{'총손익$':>10} {'MDD$':>10} {'연환산$':>10} {'Calmar':>7}")
+          f"{'PnL$':>10} {'MDD$':>10} {'AnnPnL$':>10} {'Calmar':>7}")
 print(header)
 for _, r in out.iterrows():
     print(f"{r['tf']:>4} {r['model']:<14} {r['n_trades']:>9,} {r['roi_pct']:>7.2f} "
           f"{r['win_rate']*100:>6.1f} {r['total_pnl']:>10,.1f} {r['mdd_dollar']:>10,.1f} "
           f"{r['ann_pnl']:>10,.1f} {r['calmar']:>7.2f}")
-print(f"\n표 저장 완료 → {csv_path}")
+print(f"\ntable saved → {csv_path}")

@@ -25,12 +25,12 @@ def model_row(res, feat_names, tf, model_id, n_obs, n_ep):
 t1_rows, t2_rows, t3_rows, t4_rows, tA_rows = [], [], [], [], []
 
 for tf in TF_CFG:
-    print(f"\n{'='*70}\n  [{tf}] 데이터 준비\n{'='*70}")
+    print(f"\n{'='*70}\n  [{tf}] preparing data\n{'='*70}")
     df = load_analysis_panel(tf)
     y  = df["outcome"].values.astype(float)
     ep = df["episode_id"].values
     n_obs, n_ep = len(df), int(df["episode_id"].nunique())
-    print(f"  분석표본: {n_obs:,}행  {n_ep:,}에피소드")
+    print(f"  analysis sample: {n_obs:,} rows  {n_ep:,} episodes")
 
     # Table 1: logit(Y) = a + b*log_odds, H0: b=1
     res = fit(y, ep, df[["log_odds"]])
@@ -75,7 +75,7 @@ for tf in TF_CFG:
     for mid, feats in csd_specs.items():
         res_ = fit(y, ep, df[feats])
         t4_rows.append(model_row(res_, all_csd_feats, tf, mid, n_obs, n_ep))
-    print(f"  Table4  (1)~(8) 완료")
+    print(f"  Table4  (1)-(8) done")
 
     # Appendix: control-variable candidates (1)-(7)
     ctrl_specs = {
@@ -92,7 +92,7 @@ for tf in TF_CFG:
     for mid, feats in ctrl_specs.items():
         res_ = fit(y, ep, df[feats])
         tA_rows.append(model_row(res_, all_ctrl_feats, tf, mid, n_obs, n_ep))
-    print(f"  Appendix (1)~(7) 완료")
+    print(f"  Appendix (1)-(7) done")
 
 pd.DataFrame(t1_rows).to_csv(os.path.join(OUT_DIR, "table1_baseline.csv"), index=False, encoding="utf-8-sig")
 pd.DataFrame(t2_rows).to_csv(os.path.join(OUT_DIR, "table2_base_model.csv"), index=False, encoding="utf-8-sig")
@@ -100,4 +100,4 @@ pd.DataFrame(t3_rows).to_csv(os.path.join(OUT_DIR, "table3_correlation.csv"), in
 pd.DataFrame(t4_rows).to_csv(os.path.join(OUT_DIR, "table4_csd_models.csv"), index=False, encoding="utf-8-sig")
 pd.DataFrame(tA_rows).to_csv(os.path.join(OUT_DIR, "tableA1_control_candidates.csv"), index=False, encoding="utf-8-sig")
 
-print(f"\n모든 표 저장 완료 → {OUT_DIR}")
+print(f"\nall tables saved → {OUT_DIR}")
