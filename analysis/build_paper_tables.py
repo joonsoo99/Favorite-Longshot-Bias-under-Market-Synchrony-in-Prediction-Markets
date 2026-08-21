@@ -1,25 +1,6 @@
 # -*- coding: utf-8 -*-
-"""
-build_paper_tables.py — FRL_longshot_bias_polymarket.tex Table 1~4 및
-Appendix Table(통제변수 후보 모형) 재현 스크립트.
-
-전제: panels/panel_{5m,15m,60m}.pkl 이 이미 존재해야 함 (build_panel.py 실행 결과).
-공통 로직(패널 전처리, CSD, GLM 적합)은 common.py를 사용한다.
-
-분석표본: obs_epoch 기준 4자산(BTC/ETH/SOL/XRP) log_odds가 모두 관측되는
-         시점만 남긴 뒤, ttm/delta_logit/poly_vol_prev/CSD 관련 파생변수까지
-         전부 결측이 없는 행만 사용 (논문 전 표에서 동일 N 사용).
-
-CSD 정의: 4자산 YES log_odds의 obs_epoch별 표준편차 → 만기 구간별 백분위
-         순위로 변환 후 중심화 (csd_q_c ∈ [-0.5, 0.5]).
-
-산출 (output/):
-  table1_baseline.csv            Table 1  — 기본 calibration (H0: beta=1)
-  table2_base_model.csv          Table 2  — 기준 모형 (log_odds+delta_logit+lo_x_ttm)
-  table3_correlation.csv         Table 3  — 상관행렬 (log_odds, delta_logit, ttm, CSD)
-  table4_csd_models.csv          Table 4  — CSD 반영 모형 (1)~(8)
-  tableA1_control_candidates.csv Appendix — 통제변수 후보 모형 (1)~(7)
-"""
+# Produces Table 1-4 and the control-candidate appendix table (output/*.csv).
+# Requires panels/panel_{5m,15m,60m}.pkl (see build_panel.py).
 import sys, io, os
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
@@ -41,7 +22,6 @@ def model_row(res, feat_names, tf, model_id, n_obs, n_ep):
     return row
 
 
-# ── 결과 컨테이너 ────────────────────────────────────────────
 t1_rows, t2_rows, t3_rows, t4_rows, tA_rows = [], [], [], [], []
 
 for tf in TF_CFG:
@@ -52,9 +32,7 @@ for tf in TF_CFG:
     n_obs, n_ep = len(df), int(df["episode_id"].nunique())
     print(f"  분석표본: {n_obs:,}행  {n_ep:,}에피소드")
 
-    # ============================================================
-    # Table 1 — 기본 calibration:  logit(Y) = a + b*log_odds   (H0: b=1)
-    # ============================================================
+    # Table 1: logit(Y) = a + b*log_odds, H0: b=1
     res = fit(y, ep, df[["log_odds"]])
     b, b_se, _  = coef_se_p(res, "log_odds", null=0.0)
     a, a_se, _  = coef_se_p(res, "const", null=0.0)
@@ -64,9 +42,7 @@ for tf in TF_CFG:
                      "sig": sig(p_b1), "N": n_obs, "episodes": n_ep})
     print(f"  Table1  alpha={a:.4f}  beta={b:.4f}{sig(p_b1)}  (H0:beta=1, p={p_b1:.4g})")
 
-    # ============================================================
-    # Table 2 — 기준 모형: log_odds + delta_logit + lo_x_ttm
-    # ============================================================
+    # Table 2: base model = log_odds + delta_logit + lo_x_ttm
     feats2 = ["log_odds", "delta_logit", "lo_x_ttm"]
     res2 = fit(y, ep, df[feats2])
     t2_rows.append(model_row(res2, feats2, tf, "base", n_obs, n_ep))
@@ -74,10 +50,7 @@ for tf in TF_CFG:
           f"delta={res2.params['delta_logit']:.4f}  "
           f"lo_x_ttm={res2.params['lo_x_ttm']:.4f}")
 
-    # ============================================================
-    # Table 3 — 상관행렬: log_odds, delta_logit, ttm, CSD(rank_c)
-    # 전 표에서 CSD는 일관되게 만기 구간별 백분위 순위 중심화 값(csd_q_c)을 사용
-    # ============================================================
+    # Table 3: correlation matrix (CSD column is csd_q_c throughout)
     corr_vars = {"log_odds": df["log_odds"], "delta_logit": df["delta_logit"],
                  "ttm": df["ttm"].astype(float), "csd": df["csd_q_c"]}
     names = list(corr_vars.keys())
@@ -87,9 +60,7 @@ for tf in TF_CFG:
             t3_rows.append({"tf": tf, "var1": names[i], "var2": names[j],
                              "r": r, "p": p, "sig": sig(p), "N": n_obs})
 
-    # ============================================================
-    # Table 4 — CSD 반영 모형 (1)~(8)  [식 c1~c8]
-    # ============================================================
+    # Table 4: CSD-augmented models (1)-(8)
     csd_specs = {
         1: ["log_odds", "delta_logit", "lo_x_ttm"],
         2: ["log_odds", "delta_logit", "lo_x_ttm", "csd_q_c"],
@@ -106,9 +77,7 @@ for tf in TF_CFG:
         t4_rows.append(model_row(res_, all_csd_feats, tf, mid, n_obs, n_ep))
     print(f"  Table4  (1)~(8) 완료")
 
-    # ============================================================
-    # Appendix Table — 통제변수 후보 모형 (1)~(7)  [식 m1~m7]
-    # ============================================================
+    # Appendix: control-variable candidates (1)-(7)
     ctrl_specs = {
         1: ["log_odds"],
         2: ["log_odds", "delta_logit"],
@@ -125,7 +94,6 @@ for tf in TF_CFG:
         tA_rows.append(model_row(res_, all_ctrl_feats, tf, mid, n_obs, n_ep))
     print(f"  Appendix (1)~(7) 완료")
 
-# ── 저장 ────────────────────────────────────────────────────
 pd.DataFrame(t1_rows).to_csv(os.path.join(OUT_DIR, "table1_baseline.csv"), index=False, encoding="utf-8-sig")
 pd.DataFrame(t2_rows).to_csv(os.path.join(OUT_DIR, "table2_base_model.csv"), index=False, encoding="utf-8-sig")
 pd.DataFrame(t3_rows).to_csv(os.path.join(OUT_DIR, "table3_correlation.csv"), index=False, encoding="utf-8-sig")

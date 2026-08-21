@@ -1,13 +1,8 @@
 # -*- coding: utf-8 -*-
-"""
-csd_distribution.py — CSD 원본(raw) 분포 히스토그램
-
-목적: CSD가 오른쪽으로 긴 꼬리를 갖는 분포임을 보여, 회귀분석에서
-백분위 순위(rank) 변환을 사용하는 이유를 시각적으로 뒷받침한다.
-
-CSD는 obs_epoch 단위 지표라 delta_logit/ttm 등 관측(행) 단위 파생변수가
-필요 없으므로, load_analysis_panel을 거치지 않고 compute_csd만 바로 쓴다.
-"""
+# Figure 1: raw CSD distribution — motivates the percentile-rank transform
+# used elsewhere (CSD is right-skewed). Uses compute_csd() directly rather
+# than load_analysis_panel(), since this is an obs_epoch-level statistic and
+# doesn't need row-level features like delta_logit/ttm.
 import sys, io, os
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
@@ -19,7 +14,7 @@ from common import (TF_CFG, PNL_DIR, OUT_DIR, TF_COLORS, FIG_DPI, compute_csd, s
 
 setup_plot_rc()
 
-# figsize 폭 7.5in ≈ 190mm = Elsevier 2단(전체 폭) 규격
+# figsize width 7.5in ~= 190mm = Elsevier double-column (full page width) spec
 fig, axes = plt.subplots(1, 3, figsize=(7.5, 2.9), dpi=FIG_DPI, sharey=False)
 fig.patch.set_facecolor("#fcfcfb")
 
@@ -42,6 +37,6 @@ for ax, (tf, fname) in zip(axes, TF_CFG.items()):
           f"max={csd.max():.3f}  p99={csd.quantile(0.99):.3f}")
 
 fig.tight_layout()
-base_path = os.path.join(OUT_DIR, "FIG1")  # 논문 Figure 1: CSD 분포(rank 변환 근거)
+base_path = os.path.join(OUT_DIR, "FIG1")
 save_fig(fig, base_path)
 print(f"저장 완료 → {base_path}.png / .pdf")

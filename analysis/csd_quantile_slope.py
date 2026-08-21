@@ -1,18 +1,9 @@
 # -*- coding: utf-8 -*-
-"""
-csd_quantile_slope.py — CSD 분위별 calibration slope 그래프
-
-핵심 주장 시각화: CSD(Cross-Sectional Dispersion)가 높을수록(비동조)
-calibration slope β(log_odds)가 낮아진다.
-
-방법:
-  1. CSD(obs_epoch별 4자산 YES log_odds 표준편차, common.compute_csd)를
-     시간대별 표본 내에서 10분위(decile)로 구간화
-  2. 구간별로 Base 모델(log_odds, lo_x_ttm, delta_logit)을 별도 추정
-     (cluster-robust, cluster = episode_id; delta_logit은 첫 틱 제외 컨벤션)
-  3. β(log_odds, =calibration slope)와 95% CI를 CSD 분위에 대해 플롯,
-     y=1(완전 보정) 기준선 표시
-"""
+# Figure 2 (headline result): calibration slope beta(log_odds) declines as
+# CSD (cross-sectional dispersion across the 4 assets) rises. Bins the
+# sample into CSD deciles per timeframe, fits the base model (log_odds +
+# lo_x_ttm + delta_logit) separately in each bin (cluster-robust by
+# episode_id), and plots beta with its 95% CI against a beta=1 reference line.
 import sys, io, os
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
@@ -25,11 +16,10 @@ from common import (TF_CFG, OUT_DIR, TF_COLORS, TF_MARKERS, FIG_DPI, fit, style_
 
 setup_plot_rc()
 
-N_BINS = 10  # 분위 개수 (decile)
+N_BINS = 10
 
 
 def fit_slope(sub: pd.DataFrame):
-    """Base 모델(log_odds, lo_x_ttm, delta_logit) 추정 → β(log_odds), SE."""
     res = fit(sub["outcome"].values.astype(float), sub["episode_id"].values,
                sub[["log_odds", "lo_x_ttm", "delta_logit"]])
     return float(res.params["log_odds"]), float(res.bse["log_odds"])
@@ -67,8 +57,7 @@ csv_path = os.path.join(OUT_DIR, "csd_quantile_slope.csv")
 df_res.to_csv(csv_path, index=False, encoding="utf-8-sig")
 print(f"\n결과 저장 → {csv_path}")
 
-# ── 플롯 ─────────────────────────────────────────────────────
-# figsize 폭 7.5in ≈ 190mm = Elsevier 2단(전체 폭) 규격
+# figsize width 7.5in ~= 190mm = Elsevier double-column (full page width) spec
 fig, ax = plt.subplots(figsize=(7.5, 5.5), dpi=FIG_DPI)
 fig.patch.set_facecolor("#fcfcfb")
 style_axes(ax)
@@ -92,6 +81,6 @@ ax.set_ylabel("Estimated calibration slope  β(log_odds)", color="#0b0b0b", font
 ax.legend(frameon=False, loc="upper right", fontsize=9)
 
 fig.tight_layout()
-base_path = os.path.join(OUT_DIR, "FIG2")  # 논문 Figure 2: 핵심 주장(CSD별 calibration slope 하락)
+base_path = os.path.join(OUT_DIR, "FIG2")
 save_fig(fig, base_path)
 print(f"플롯 저장 → {base_path}.png / .pdf")
