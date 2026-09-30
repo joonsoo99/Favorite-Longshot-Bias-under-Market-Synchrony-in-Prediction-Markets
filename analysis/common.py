@@ -29,11 +29,6 @@ BACKTEST_MODEL_SPECS = {
     "M2_baseline":   ["log_odds", "delta_logit", "lo_x_ttm"],
     "M3_plus_csd":   ["log_odds", "delta_logit", "lo_x_ttm", "lo_x_csd"],
 }
-BACKTEST_MODEL_LABELS = {
-    "M1_price_only": "M1: price only",
-    "M2_baseline":   "M2: baseline",
-    "M3_plus_csd":   "M3: + CSD",
-}
 BACKTEST_MODEL_COLORS = {"M1_price_only": "#2a78d6", "M2_baseline": "#eb6834", "M3_plus_csd": "#1baf7a"}
 
 BACKTEST_FEE         = 0.015
