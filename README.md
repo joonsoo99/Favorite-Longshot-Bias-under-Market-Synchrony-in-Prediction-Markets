@@ -19,7 +19,7 @@ download/collect_polymarket_updown.py --tf {5m,15m,60m,all}
 build_panel.py
     → panels/panel_{5m,15m,60m}.pkl
 
-analysis/build_paper_tables.py   → output/table1-4, tableA1 (calibration, CSD models)
+analysis/build_paper_tables.py   → output/{slot,episode}/table1, 2, 4 + output/table3 (calibration, controls, CSD models)
 analysis/csd_distribution.py     → output/FIG1 (CSD distribution)
 analysis/csd_quantile_slope.py   → output/FIG2 (calibration slope vs. CSD decile)
 analysis/equity_curve.py         → output/FIG3, backtest_results.csv (Table 5: backtest + risk-adjusted metrics)
@@ -33,18 +33,35 @@ styling) shared by the analysis scripts.
 
 ### Tables
 
-Table 2, Table 4 and Table A1 are written both as CSV (all statistics) and as
-paper-layout Markdown (`output/*.md`: one panel per horizon, coefficients with
-SEs, then explanatory-power rows). Table 2 builds the base model up one
-control at a time (`price` → `+delta` → `base`). The explanatory-power rows
-are McFadden pseudo R², its gain over a reference model (ΔR²), and a
-cluster-robust Wald test (by episode) that the added terms are zero:
+| Table | Content |
+|---|---|
+| Table 1 | calibration regression logit P(Y=1) = α + β ln(p/(1-p)); tests α = 0 and β = 1 |
+| Table 2 | control-variable candidates (1)-(7); (5) is the base model |
+| Table 3 | correlation matrix |
+| Table 4 | CSD-augmented models (1)-(8) |
+
+Standard errors are cluster-robust, and Tables 1, 2 and 4 are written once
+per clustering (coefficients are identical; SEs, p-values, stars and Wald
+tests differ):
+
+- `output/slot/`: clustered by time window (`slot_epoch`), the main
+  specification. All 4 assets in a slot share the same CSD value and common
+  crypto shocks, so episodes in the same slot are not independent.
+- `output/episode/`: clustered by episode (asset × slot), as a robustness check.
+
+Table 3 does not depend on clustering (`output/table3_correlation.csv`).
+FIG2's confidence intervals are slot-clustered.
+
+Tables 2 and 4 are written both as CSV (all statistics) and as paper-layout
+Markdown (`*.md`: one panel per horizon, coefficients with SEs, then
+explanatory-power rows). The explanatory-power rows are McFadden pseudo R²,
+its gain over a reference model (ΔR²), and a cluster-robust Wald test (same
+clustering as the SEs) that the added terms are zero:
 
 | Table | Reference model |
 |---|---|
-| Table 2 | previous step |
-| Table 4 | same model without the CSD terms; (1) and (5) vs. price only |
-| Table A1 | same model without the candidate term |
+| Table 2 | same model without the candidate term |
+| Table 4 | same model without the CSD terms; (1) and (5) vs. price only (Table 2, (1)) |
 
 ### Robustness (`model_eval/`)
 

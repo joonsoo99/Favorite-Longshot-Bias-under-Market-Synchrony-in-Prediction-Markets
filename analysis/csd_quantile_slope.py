@@ -3,7 +3,7 @@
 # CSD (cross-sectional dispersion across the 4 assets) rises. Bins the
 # sample into CSD deciles per timeframe, fits the base model (log_odds +
 # lo_x_ttm + delta_logit) separately in each bin (cluster-robust by
-# episode_id), and plots beta with its 95% CI against a beta=1 reference line.
+# time window, slot_epoch), and plots beta with its 95% CI against a beta=1 reference line.
 import sys, io, os
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
@@ -20,7 +20,7 @@ N_BINS = 10
 
 
 def fit_slope(sub: pd.DataFrame):
-    res = fit(sub["outcome"].values.astype(float), sub["episode_id"].values,
+    res = fit(sub["outcome"].values.astype(float), sub["slot_epoch"].values,
                sub[["log_odds", "lo_x_ttm", "delta_logit"]])
     return float(res.params["log_odds"]), float(res.bse["log_odds"])
 
@@ -47,6 +47,7 @@ for tf in TF_CFG:
             "csd_median": float(sub["csd_raw"].median()),
             "beta": beta, "se": se, "ci_lo": ci_lo, "ci_hi": ci_hi,
             "n": len(sub), "n_ep": int(sub["episode_id"].nunique()),
+            "n_slots": int(sub["slot_epoch"].nunique()),
         }
         rows.append(row)
         print(f"  Q{int(b)+1}  CSD∈[{row['csd_lo']:.2f},{row['csd_hi']:.2f}]  "

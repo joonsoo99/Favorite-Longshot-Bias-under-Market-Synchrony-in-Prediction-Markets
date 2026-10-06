@@ -60,11 +60,13 @@ def compute_csd(panel: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def fit(y, ep_ids, Xdf: pd.DataFrame):
-    """Cluster-robust (by episode_id) logistic GLM."""
+def fit(y, groups, Xdf: pd.DataFrame):
+    """Cluster-robust logistic GLM. Callers pass slot_epoch as `groups`: all 4
+    assets in a time window share CSD and common shocks, so episodes in the
+    same slot are not independent and must sit in one cluster."""
     Xc = sm.add_constant(Xdf.astype(float), has_constant="add")
     m = sm.GLM(y, Xc, family=sm.families.Binomial())
-    return m.fit(cov_type="cluster", cov_kwds={"groups": np.asarray(ep_ids)}, disp=False)
+    return m.fit(cov_type="cluster", cov_kwds={"groups": np.asarray(groups)}, disp=False)
 
 
 def coef_se_p(res, name: str, null: float = 0.0):

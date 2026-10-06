@@ -62,7 +62,7 @@ for ax, tf in zip(axes, TF_CFG):
     print(f"\n{'='*70}\n  [{tf}]\n{'='*70}")
     df = load_analysis_panel(tf, extra_need=NEED)
     y  = df["outcome"].values.astype(float)
-    ep = df["episode_id"].values
+    groups = df["slot_epoch"].values  # SEs unused here; kept consistent with tables
     price = df["price"].values
     t_dates_all = pd.to_datetime(df["obs_epoch"].values, unit="s", utc=True)
 
@@ -70,7 +70,7 @@ for ax, tf in zip(axes, TF_CFG):
     ax.axhline(0, color="#c3c2b7", linewidth=1.2, linestyle="--", zorder=1)
 
     for mname, feats in BACKTEST_MODEL_SPECS.items():
-        res = fit(y, ep, df[feats])
+        res = fit(y, groups, df[feats])
         trade = trade_mask(res, price, EDGE_THRESH)
         if trade.sum() == 0:
             print(f"  [{mname}] no trades")
