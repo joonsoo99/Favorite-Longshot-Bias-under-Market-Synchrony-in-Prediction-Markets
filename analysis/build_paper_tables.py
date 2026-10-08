@@ -1,14 +1,20 @@
 # -*- coding: utf-8 -*-
-# Produces Table 1-4. Requires panels/panel_{5m,15m,60m}.pkl (see build_panel.py).
+# Produces manuscript Tables 1-5. Requires panels/panel_{5m,15m,60m}.pkl
+# (see build_panel.py). File names follow the manuscript numbering:
+#   results/table1_sample.csv            Table 1  sample period and size
+#   results/{slot,episode}/table2_basic_calibration.csv     Table 2
+#   results/{slot,episode}/table3_control_candidates.{csv,md} Table 3
+#   results/table4_correlation.csv       Table 4
+#   results/{slot,episode}/table5_csd_specifications.{csv,md} Table 5
 #
-# Tables 1, 2 and 4 are written twice, once per clustering of the standard
+# Tables 2, 3 and 5 are written twice, once per clustering of the standard
 # errors (coefficients are identical; only SEs, p-values, stars and Wald
 # tests differ):
-#   output/slot/     cluster = time window (slot_epoch)  -- main specification:
+#   results/slot/     cluster = time window (slot_epoch)  -- main specification:
 #                    all 4 assets in a slot share CSD and common shocks, so
 #                    episodes in the same slot are not independent
-#   output/episode/  cluster = episode (asset x slot)    -- robustness
-# Table 3 (correlations) does not depend on clustering: output/table3_correlation.csv.
+#   results/episode/  cluster = episode (asset x slot)    -- robustness
+# Tables 1 and 4 do not depend on clustering.
 import sys, io, os
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
@@ -90,6 +96,8 @@ CSD_FEATS = ["log_odds", "lo_x_ttm", "lo_x_csd", "delta_logit", "csd_q_c"]
 
 rows = {c: {"t1": [], "t2": [], "t4": []} for c in CLUSTERS}
 t3_rows = []
+sample_rows = []
+WINDOW_MIN = {"5m": 5, "15m": 15, "60m": 60}
 
 for tf in TF_CFG:
     print(f"\n{'='*70}\n  [{tf}] preparing data\n{'='*70}")
@@ -97,6 +105,11 @@ for tf in TF_CFG:
     y  = df["outcome"].values.astype(float)
     n_obs, n_ep = len(df), int(df["episode_id"].nunique())
     n_slots = int(df["slot_epoch"].nunique())
+    first_open = pd.to_datetime(df["slot_epoch"].min(), unit="s", utc=True)
+    last_close = pd.to_datetime(df["slot_epoch"].max() + 60 * WINDOW_MIN[tf], unit="s", utc=True)
+    sample_rows.append({"tf": tf, "first_window_opens_utc": first_open.strftime("%Y-%m-%d %H:%M"),
+                        "last_window_closes_utc": last_close.strftime("%Y-%m-%d %H:%M"),
+                        "time_windows": n_slots, "episodes": n_ep, "observations": n_obs})
     print(f"  analysis sample: {n_obs:,} rows  {n_ep:,} episodes  {n_slots:,} slots")
     llf0 = float(sm.GLM(y, np.ones(len(y)), family=sm.families.Binomial()).fit().llf)
 
@@ -208,20 +221,21 @@ def save_csv(tab, path):
     pd.DataFrame(tab).to_csv(path, index=False, encoding="utf-8-sig")
 
 
-save_csv(t3_rows, os.path.join(OUT_DIR, "table3_correlation.csv"))
+save_csv(sample_rows, os.path.join(OUT_DIR, "table1_sample.csv"))
+save_csv(t3_rows, os.path.join(OUT_DIR, "table4_correlation.csv"))
 
 for cname in CLUSTERS:
     out = os.path.join(OUT_DIR, cname)
     os.makedirs(out, exist_ok=True)
     R = rows[cname]
-    save_csv(R["t1"], os.path.join(out, "table1_baseline.csv"))
-    save_csv(R["t2"], os.path.join(out, "table2_control_candidates.csv"))
-    save_csv(R["t4"], os.path.join(out, "table4_csd_models.csv"))
+    save_csv(R["t1"], os.path.join(out, "table2_basic_calibration.csv"))
+    save_csv(R["t2"], os.path.join(out, "table3_control_candidates.csv"))
+    save_csv(R["t4"], os.path.join(out, "table5_csd_specifications.csv"))
     for fname, rows_, feats_, title in [
-            ("table2_control_candidates.md", R["t2"], CTRL_FEATS,
-             "Table 2. Control-variable candidates"),
-            ("table4_csd_models.md", R["t4"], ["log_odds", "delta_logit", "lo_x_ttm", "lo_x_csd", "csd_q_c"],
-             "Table 4. CSD-augmented models")]:
+            ("table3_control_candidates.md", R["t2"], CTRL_FEATS,
+             "Table 3. Candidate control specifications"),
+            ("table5_csd_specifications.md", R["t4"], ["log_odds", "delta_logit", "lo_x_ttm", "lo_x_csd", "csd_q_c"],
+             "Table 5. CSD specifications")]:
         with open(os.path.join(out, fname), "w", encoding="utf-8") as f:
             f.write(paper_table_md(pd.DataFrame(rows_), feats_, title, cname))
     print(f"  [{cname}] tables saved → {out}")

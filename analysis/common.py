@@ -8,7 +8,7 @@ from scipy import stats as sp_stats
 
 ROOT    = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # poly_v2/
 PNL_DIR = os.path.join(ROOT, "panels")
-OUT_DIR = os.path.join(ROOT, "output")
+OUT_DIR = os.path.join(ROOT, "results")  # manuscript tables and figures
 os.makedirs(OUT_DIR, exist_ok=True)
 
 TF_CFG = {"5m": "panel_5m.pkl", "15m": "panel_15m.pkl", "60m": "panel_60m.pkl"}
@@ -33,7 +33,6 @@ BACKTEST_MODEL_COLORS = {"M1_price_only": "#2a78d6", "M2_baseline": "#eb6834", "
 
 BACKTEST_FEE         = 0.015
 BACKTEST_EDGE_THRESH = 0.015
-BACKTEST_NEED = ["log_odds", "delta_logit", "ttm_c", "lo_x_ttm", "csd_raw", "csd_q_c", "lo_x_csd"]
 
 
 def sig(p) -> str:
@@ -80,32 +79,45 @@ def coef_se_p(res, name: str, null: float = 0.0):
     return c, se, p
 
 
-def load_analysis_panel(tf: str, extra_need: list[str] | None = None) -> pd.DataFrame:
-    """Load panel_{tf}.pkl, attach derived features, and drop rows with any
-    missing value among `extra_need` (or the full derived-feature list if
-    not given). delta_logit is used as-is from the panel pkl (computed once
-    in build_panel.py) rather than recomputed here, to avoid two copies of
-    the same logic drifting out of sync."""
+# Every analysis uses one sample: rows with all of these present. This drops
+# the first tick of each episode (delta_logit is NaN there) and episodes
+# without the previous slot's volume (poly_vol_prev), so tables, figures,
+# backtest and robustness checks all share the same observations.
+ANALYSIS_NEED = ["log_odds", "delta_logit", "poly_vol_log", "csd_raw"]
+N_ASSETS = 4
+
+
+def load_analysis_panel(tf: str) -> pd.DataFrame:
+    """Load panel_{tf}.pkl and return the common analysis sample with derived
+    features. Rows missing any variable in ANALYSIS_NEED are dropped FIRST,
+    then every time window (slot) that no longer has all 4 assets is dropped
+    entirely, so each window in the sample holds the full 4-asset cross-section
+    that CSD summarises. The centering (ttm_c: ttm minus its median, csd_q_c:
+    CSD percentile rank minus 0.5) and every interaction are then computed on
+    that sample, so the centering refers to the observations actually analysed.
+    Because every kept timestamp has the same number of rows (4 assets x 2
+    tokens), ranking rows is equivalent to ranking timestamps.
+
+    CSD itself (compute_csd) is computed on the full panel: it is a property
+    of the time point (std across all 4 assets' prices), not of which rows
+    survive the volume filter. delta_logit is used as-is from the panel pkl
+    (computed once in build_panel.py) rather than recomputed here, to avoid
+    two copies of the same logic drifting out of sync."""
     panel = pd.read_pickle(os.path.join(PNL_DIR, TF_CFG[tf]))
 
     panel["poly_vol_log"] = np.log1p(panel["poly_vol_prev"].clip(lower=0))
-    panel["ttm_c"]        = panel["ttm"] - panel["ttm"].median()
-    panel["lo_x_ttm"]     = panel["log_odds"] * panel["ttm_c"]
-    panel["lo_x_delta"]   = panel["log_odds"] * panel["delta_logit"]
-    panel["lo_x_vol"]     = panel["log_odds"] * panel["poly_vol_log"]
+    panel = panel.merge(compute_csd(panel), on="obs_epoch", how="left")
+    df = panel.dropna(subset=ANALYSIS_NEED)
+    full_window = df.groupby("slot_epoch")["asset"].transform("nunique") == N_ASSETS
+    df = df[full_window].reset_index(drop=True)
 
-    csd_df = compute_csd(panel)
-    panel  = panel.merge(csd_df, on="obs_epoch", how="left")
-    panel["csd_q_c"]  = panel["csd_raw"].rank(pct=True) - 0.5
-    panel["lo_x_csd"] = panel["log_odds"] * panel["csd_q_c"]
-
-    panel["price"] = 1.0 / (1.0 + np.exp(-panel["log_odds"]))
-
-    need = extra_need if extra_need is not None else [
-        "log_odds", "delta_logit", "ttm_c", "lo_x_ttm", "lo_x_delta",
-        "poly_vol_log", "lo_x_vol", "csd_raw", "csd_q_c", "lo_x_csd",
-    ]
-    df = panel.dropna(subset=need).reset_index(drop=True)
+    df["ttm_c"]      = df["ttm"] - df["ttm"].median()
+    df["lo_x_ttm"]   = df["log_odds"] * df["ttm_c"]
+    df["lo_x_delta"] = df["log_odds"] * df["delta_logit"]
+    df["lo_x_vol"]   = df["log_odds"] * df["poly_vol_log"]
+    df["csd_q_c"]    = df["csd_raw"].rank(pct=True) - 0.5
+    df["lo_x_csd"]   = df["log_odds"] * df["csd_q_c"]
+    df["price"]      = 1.0 / (1.0 + np.exp(-df["log_odds"]))
     return df
 
 

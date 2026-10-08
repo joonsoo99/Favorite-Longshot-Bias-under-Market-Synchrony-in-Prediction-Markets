@@ -3,3 +3,5 @@ __pycache__/
 panels/
 output/
 download/raw_output/
+results/
+.venv/

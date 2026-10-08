@@ -1,0 +1,10 @@
+# Versions used to produce the results in the manuscript (Python 3.12.2).
+numpy==2.4.5
+pandas==2.3.2
+statsmodels==0.14.6
+scipy==1.17.1
+matplotlib==3.9.4
+requests==2.33.1
+tqdm==4.66.4
+# zoneinfo time-zone database (needed on Windows for the 60m slug format)
+tzdata==2025.2

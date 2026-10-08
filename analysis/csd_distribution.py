@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
-# Figure 1: raw CSD distribution — motivates the percentile-rank transform
-# used elsewhere (CSD is right-skewed). Uses compute_csd() directly rather
-# than load_analysis_panel(), since this is an obs_epoch-level statistic and
-# doesn't need row-level features like delta_logit/ttm.
+# Figure A.1 (appendix): raw CSD distribution — motivates the percentile-rank transform
+# used elsewhere (CSD is right-skewed). CSD is an obs_epoch-level statistic,
+# so the distribution is over the distinct obs_epochs of the common analysis
+# sample (load_analysis_panel), one value each.
 import sys, io, os
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from common import (TF_CFG, PNL_DIR, OUT_DIR, TF_COLORS, FIG_DPI, compute_csd, style_axes,
+from common import (TF_CFG, OUT_DIR, TF_COLORS, FIG_DPI, load_analysis_panel, style_axes,
                      save_fig, setup_plot_rc)
 
 setup_plot_rc()
@@ -19,8 +19,8 @@ fig, axes = plt.subplots(1, 3, figsize=(7.5, 2.9), dpi=FIG_DPI, sharey=False)
 fig.patch.set_facecolor("#fcfcfb")
 
 for ax, (tf, fname) in zip(axes, TF_CFG.items()):
-    panel = pd.read_pickle(os.path.join(PNL_DIR, fname))
-    csd = compute_csd(panel)["csd_raw"]
+    df = load_analysis_panel(tf)
+    csd = df.drop_duplicates("obs_epoch")["csd_raw"]
     mean_v, med_v = csd.mean(), csd.median()
     p95 = csd.quantile(0.95)
 
@@ -37,6 +37,6 @@ for ax, (tf, fname) in zip(axes, TF_CFG.items()):
           f"max={csd.max():.3f}  p99={csd.quantile(0.99):.3f}")
 
 fig.tight_layout()
-base_path = os.path.join(OUT_DIR, "FIG1")
+base_path = os.path.join(OUT_DIR, "figA1_csd_distribution")
 save_fig(fig, base_path)
 print(f"saved → {base_path}.png / .pdf")

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Figure 3 + Table 5/6 (merged): backtest performance and risk-adjusted
+# Figure 2 + Table 7: backtest performance and risk-adjusted
 # metrics. Strategy: buy 1 share whenever the model's fitted probability
 # exceeds the market price by >= EDGE_THRESH (buy price = market price +
 # FEE); pnl = realized outcome (0/1) - buy price. In-sample backtest (fit
@@ -20,13 +20,17 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
 from common import (TF_CFG, OUT_DIR, BACKTEST_MODEL_SPECS,
-                     BACKTEST_MODEL_COLORS, BACKTEST_FEE, BACKTEST_EDGE_THRESH, BACKTEST_NEED, FIG_DPI,
+                     BACKTEST_MODEL_COLORS, BACKTEST_FEE, BACKTEST_EDGE_THRESH, FIG_DPI,
                      fit, load_analysis_panel, trade_mask, trade_cost_pnl, style_axes, save_fig,
                      setup_plot_rc)
 
 setup_plot_rc()
 
-FEE, EDGE_THRESH, NEED = BACKTEST_FEE, BACKTEST_EDGE_THRESH, BACKTEST_NEED
+FEE, EDGE_THRESH = BACKTEST_FEE, BACKTEST_EDGE_THRESH
+
+# Legend labels = the manuscript's equation numbers for each model. Update
+# these if equations are added to or removed from the paper.
+LEGEND_LABELS = {"M1_price_only": "Eq. (1)", "M2_baseline": "Eq. (7)", "M3_plus_csd": "Eq. (11)"}
 
 EMPTY_ROW = dict(n_trades=0, total_cost=0.0, total_pnl=0.0, avg_pnl=np.nan, roi_pct=np.nan,
                   win_rate=np.nan, mdd_dollar=np.nan, n_days=np.nan, ann_pnl=np.nan, calmar=np.nan)
@@ -60,7 +64,7 @@ rows = []
 
 for ax, tf in zip(axes, TF_CFG):
     print(f"\n{'='*70}\n  [{tf}]\n{'='*70}")
-    df = load_analysis_panel(tf, extra_need=NEED)
+    df = load_analysis_panel(tf)
     y  = df["outcome"].values.astype(float)
     groups = df["slot_epoch"].values  # SEs unused here; kept consistent with tables
     price = df["price"].values
@@ -83,29 +87,32 @@ for ax, tf in zip(axes, TF_CFG):
               f"roi={row['roi_pct']:.2f}%  win_rate={row['win_rate']*100:.1f}%  "
               f"mdd=${row['mdd_dollar']:,.1f}  calmar={row['calmar']:.2f}")
 
-        # Legend shows just the model name (n/final are already in
-        # backtest_results.csv) — panel width is narrow (190mm spec), so
+        # Legend shows just the equation number (n/final are already in
+        # table7_backtest.csv) — panel width is narrow (190mm spec), so
         # longer labels would overlap/clip.
         ax.plot(t_dates_all[trade].values[order], cum_pnl, color=BACKTEST_MODEL_COLORS[mname],
-                linewidth=1.3, label=mname.split("_")[0])
+                linewidth=1.3, label=LEGEND_LABELS[mname])
 
     ax.set_title(tf, fontsize=9, fontweight="bold")
     ax.set_xlabel("Time", fontsize=7.5)
     if ax is axes[0]:
         ax.set_ylabel("Cumulative PnL ($)", fontsize=7.5)
-    ax.legend(frameon=False, fontsize=7, loc="upper left", handlelength=1.2, borderaxespad=0.3)
+    # 5m: the early-April peak runs through the upper-left corner, so the
+    # legend goes to the (empty) lower left there.
+    ax.legend(frameon=False, fontsize=7, loc="lower left" if tf == "5m" else "upper left",
+              handlelength=1.2, borderaxespad=0.3)
     ax.xaxis.set_major_locator(mdates.AutoDateLocator(minticks=3, maxticks=4))
     ax.xaxis.set_major_formatter(mdates.ConciseDateFormatter(ax.xaxis.get_major_locator()))
     ax.tick_params(labelsize=7)
 
 fig.tight_layout()
-base_path = os.path.join(OUT_DIR, "FIG3")
+base_path = os.path.join(OUT_DIR, "fig2_cumulative_pnl")
 save_fig(fig, base_path)
 print(f"\nplot saved → {base_path}.png / .pdf")
 
 out = pd.DataFrame(rows)[["tf", "model", "n_trades", "total_cost", "total_pnl", "avg_pnl",
                            "roi_pct", "win_rate", "mdd_dollar", "ann_pnl", "calmar"]]
-csv_path = os.path.join(OUT_DIR, "backtest_results.csv")
+csv_path = os.path.join(OUT_DIR, "table7_backtest.csv")
 out.to_csv(csv_path, index=False, encoding="utf-8-sig")
 
 print(f"\n{'='*96}\n  Table 5+6 combined: backtest performance and risk-adjusted metrics\n{'='*96}")

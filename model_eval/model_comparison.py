@@ -37,10 +37,10 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
 from common import (TF_CFG, BACKTEST_MODEL_SPECS, BACKTEST_MODEL_COLORS, BACKTEST_FEE,
-                     BACKTEST_EDGE_THRESH, BACKTEST_NEED, FIG_DPI, sig, load_analysis_panel,
+                     BACKTEST_EDGE_THRESH, FIG_DPI, sig, load_analysis_panel,
                      style_axes, save_fig, setup_plot_rc)
 
-OUT_DIR = os.path.join(HERE, "output")
+OUT_DIR = os.path.join(HERE, "results")
 os.makedirs(OUT_DIR, exist_ok=True)
 
 MIN_TRAIN_MONTHS = 2          # first test fold = 3rd calendar month in the data
@@ -111,7 +111,7 @@ curves = {}
 
 for tf in TF_CFG:
     print(f"\n{'='*72}\n  [{tf}]\n{'='*72}")
-    df = load_analysis_panel(tf, extra_need=BACKTEST_NEED)
+    df = load_analysis_panel(tf)
     df["price"] = df["price"].clip(EPS, 1 - EPS)
     ts = pd.to_datetime(df["slot_epoch"], unit="s")
     df["month"] = ts.dt.to_period("M")

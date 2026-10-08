@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Figure 2 (headline result): calibration slope beta(log_odds) declines as
+# Figure 1 (headline result): calibration slope beta(log_odds) declines as
 # CSD (cross-sectional dispersion across the 4 assets) rises. Bins the
 # sample into CSD deciles per timeframe, fits the base model (log_odds +
 # lo_x_ttm + delta_logit) separately in each bin (cluster-robust by
@@ -25,12 +25,11 @@ def fit_slope(sub: pd.DataFrame):
     return float(res.params["log_odds"]), float(res.bse["log_odds"])
 
 
-NEED = ["log_odds", "lo_x_ttm", "delta_logit", "csd_raw"]
 rows = []
 
 for tf in TF_CFG:
     print(f"\n{'='*60}\n  [{tf}] load + decile fit\n{'='*60}")
-    df = load_analysis_panel(tf, extra_need=NEED)
+    df = load_analysis_panel(tf)
     print(f"  sample: {len(df):,} rows  episodes: {df['episode_id'].nunique():,}")
     print(f"  CSD: median={df['csd_raw'].median():.3f}  "
           f"IQR=[{df['csd_raw'].quantile(.25):.3f}, {df['csd_raw'].quantile(.75):.3f}]")
@@ -54,7 +53,7 @@ for tf in TF_CFG:
               f"n={row['n']:,}  beta={beta:.4f}  95%CI=[{ci_lo:.4f},{ci_hi:.4f}]")
 
 df_res = pd.DataFrame(rows)
-csv_path = os.path.join(OUT_DIR, "csd_quantile_slope.csv")
+csv_path = os.path.join(OUT_DIR, "fig1_csd_decile_slope.csv")
 df_res.to_csv(csv_path, index=False, encoding="utf-8-sig")
 print(f"\nresults saved → {csv_path}")
 
@@ -82,6 +81,6 @@ ax.set_ylabel("Estimated calibration slope  β(log_odds)", color="#0b0b0b", font
 ax.legend(frameon=False, loc="upper right", fontsize=9)
 
 fig.tight_layout()
-base_path = os.path.join(OUT_DIR, "FIG2")
+base_path = os.path.join(OUT_DIR, "fig1_csd_decile_slope")
 save_fig(fig, base_path)
 print(f"plot saved → {base_path}.png / .pdf")
