@@ -233,7 +233,7 @@ mechanically ≈ 0 because of YES/NO mirroring (see 9).
 
 CSD enters as `csd_q_c` (percentile rank), ℓ×CSD as `lo_x_csd`.
 
-### Figure A.1 — `csd_distribution.py`
+### Figure B.1 — `csd_distribution.py`
 Distinct obs_epochs of the analysis sample, one CSD value each (the value
 itself is computed from all 4 assets in the panel); histogram with 80 bins on
 `[0, 1.6 × p95]`; median, mean and pandas skewness annotated. Because the
@@ -305,7 +305,7 @@ Analysis sample, both tokens. For Eq. c4 (= Table 5 (4)) and Eq. c3 (= Table 5
 it is identical on YES and NO rows while ℓ and Δℓ flip sign, so c3 and c4
 give the same VIFs for the shared variables.
 
-### 6.3 `backtest_stats.py` — Table 7 NW t column (`results/table7_backtest_nw_tests.csv`), Table A.1 (`results/tableA1_transaction_costs.csv`)
+### 6.3 `backtest_stats.py` — Table 7 NW t column (`results/table7_backtest_nw_tests.csv`), Table C.1 (`results/tableC1_transaction_costs.csv`)
 Reproduces Table 7 first and stops on any mismatch in trade count or total
 PnL. Then:
 - **PnL tests**: PnL summed per time window (slot) over **all** windows in the
@@ -324,12 +324,12 @@ PnL. Then:
 python download/collect_polymarket_updown.py --tf all   # network; slow
 python build_panel.py
 python analysis/build_paper_tables.py    # Tables 1-4 (slot + episode)
-python analysis/csd_distribution.py      # Figure A.1
+python analysis/csd_distribution.py      # Figure B.1
 python analysis/csd_quantile_slope.py    # Figure 1
 python analysis/equity_curve.py          # Table 7, Figure 2
 python model_eval/model_comparison.py    # optional
 python model_eval/vif.py                 # Table 6
-python model_eval/backtest_stats.py      # Table 7 NW t column, Table A.1; needs results/table7_backtest.csv
+python model_eval/backtest_stats.py      # Table 7 NW t column, Table C.1; needs results/table7_backtest.csv
 ```
 
 Outputs are deterministic given the raw pickles (no random sampling;

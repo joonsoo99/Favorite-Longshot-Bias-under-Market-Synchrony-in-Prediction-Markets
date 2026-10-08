@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Figure A.1 (appendix): raw CSD distribution — motivates the percentile-rank transform
+# Figure B.1 (Appendix B): raw CSD distribution — motivates the percentile-rank transform
 # used elsewhere (CSD is right-skewed). CSD is an obs_epoch-level statistic,
 # so the distribution is over the distinct obs_epochs of the common analysis
 # sample (load_analysis_panel), one value each.
@@ -37,6 +37,6 @@ for ax, (tf, fname) in zip(axes, TF_CFG.items()):
           f"max={csd.max():.3f}  p99={csd.quantile(0.99):.3f}")
 
 fig.tight_layout()
-base_path = os.path.join(OUT_DIR, "figA1_csd_distribution")
+base_path = os.path.join(OUT_DIR, "figB1_csd_distribution")
 save_fig(fig, base_path)
 print(f"saved → {base_path}.png / .pdf")

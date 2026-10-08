@@ -23,8 +23,8 @@ analysis/build_paper_tables.py   → Tables 1-5
 analysis/csd_quantile_slope.py   → Figure 1
 analysis/equity_curve.py         → Table 7, Figure 2
 model_eval/vif.py                → Table 6
-model_eval/backtest_stats.py     → Table 7 (NW t column), Table A.1
-analysis/csd_distribution.py     → Figure A.1
+model_eval/backtest_stats.py     → Table 7 (NW t column), Table C.1
+analysis/csd_distribution.py     → Figure B.1
 
 model_eval/model_comparison.py   → model_eval/results/ (robustness: model comparison, walk-forward out-of-sample)
 ```
@@ -40,10 +40,10 @@ model_eval/model_comparison.py   → model_eval/results/ (robustness: model comp
 | Table 5 — CSD specifications | `slot/table5_csd_specifications.{csv,md}` |
 | Table 6 — variance inflation factors | `table6_vif.csv` |
 | Table 7 — backtest | `table7_backtest.csv`, `table7_backtest_nw_tests.csv` (NW t column) |
-| Table A.1 — transaction costs | `tableA1_transaction_costs.csv` |
+| Table C.1 — transaction costs | `tableC1_transaction_costs.csv` |
 | Figure 1 — calibration slope by CSD decile | `fig1_csd_decile_slope.{pdf,png,csv}` |
 | Figure 2 — cumulative PnL | `fig2_cumulative_pnl.{pdf,png}` |
-| Figure A.1 — CSD distribution | `figA1_csd_distribution.{pdf,png}` |
+| Figure B.1 — CSD distribution | `figB1_csd_distribution.{pdf,png}` |
 
 `results/episode/` holds Tables 2, 3 and 5 with episode-clustered standard
 errors (robustness).
@@ -93,7 +93,7 @@ clustering as the SEs) that the added terms are zero:
 - `vif.py`: variance inflation factors of the CSD-augmented model,
   unweighted and weighted by p̂(1−p̂) (Table 6).
 - `backtest_stats.py`: Newey–West tests on backtest PnL aggregated by time
-  window (Table 7, NW t column) and the transaction-cost analysis (Table A.1).
+  window (Table 7, NW t column) and the transaction-cost analysis (Table C.1).
 - `model_comparison.py`: additional robustness checks, not reported in the
   manuscript (outputs in `model_eval/results/`).
 
@@ -132,6 +132,6 @@ python analysis/csd_distribution.py
 python analysis/csd_quantile_slope.py
 python analysis/equity_curve.py
 python model_eval/vif.py                # Table 6
-python model_eval/backtest_stats.py     # Table 7 NW t column, Table A.1 (after equity_curve.py)
+python model_eval/backtest_stats.py     # Table 7 NW t column, Table C.1 (after equity_curve.py)
 python model_eval/model_comparison.py   # optional robustness checks
 ```

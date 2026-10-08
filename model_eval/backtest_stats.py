@@ -15,12 +15,12 @@
 #    both compared models have no trades are left blank.
 # 2. Mid-price at entry (actual trades only): summary statistics and a
 #    histogram on [0, 1] with 20 bins of width 0.05.
-# 3. Transaction costs (manuscript Table A.1): entry mid-price statistics,
+# 3. Transaction costs (manuscript Table C.1): entry mid-price statistics,
 #    all-taker cost per trade, and total PnL under the fixed $0.015 cost vs
 #    the all-taker cost.
 #
 # Outputs: results/table7_backtest_nw_tests.csv (NW t column of manuscript
-# Table 7), results/tableA1_transaction_costs.csv (Table A.1), and
+# Table 7), results/tableC1_transaction_costs.csv (Table C.1), and
 # model_eval/results/mid_price_summary.csv, mid_price_hist.csv,
 # FIG_mid_price_hist. results/table7_backtest.csv is only read.
 import sys, io, os
@@ -117,7 +117,7 @@ summary.to_csv(os.path.join(OUT_DIR, "mid_price_summary.csv"), index=False, enco
 hist.to_csv(os.path.join(OUT_DIR, "mid_price_hist.csv"), index=False, encoding="utf-8-sig")
 
 
-# 3. Transaction costs (manuscript Table A.1). All-taker cost per trade = half
+# 3. Transaction costs (manuscript Table C.1). All-taker cost per trade = half
 # of a one-tick ($0.01) spread + taker fee 0.07 p (1 - p), with p evaluated at
 # the midpoint of each 0.05 entry-price bin and averaged over trades. The
 # all-taker PnL replaces the fixed $0.015 cost of Table 7 with this cost, so
@@ -138,7 +138,7 @@ for _, s in summary[summary.n_trades > 0].iterrows():
         "pnl_all_taker": fixed_pnl + float(((BACKTEST_FEE - cost) * h["count"]).sum()),
     })
 costs = pd.DataFrame(cost_rows)
-costs.to_csv(os.path.join(PAPER_DIR, "tableA1_transaction_costs.csv"), index=False, encoding="utf-8-sig")
+costs.to_csv(os.path.join(PAPER_DIR, "tableC1_transaction_costs.csv"), index=False, encoding="utf-8-sig")
 
 
 
