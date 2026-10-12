@@ -1,4 +1,19 @@
 # -*- coding: utf-8 -*-
+# Sample construction (paper Section 2). From the raw data collected by
+# download/collect_polymarket_updown.py, builds the minute-level analysis
+# sample used by every table, figure and test:
+#   1. keep episodes whose minute-level price records are complete for both
+#      the UP and DOWN contracts (and time windows with all 4 assets);
+#   2. drop episodes whose previous episode (same asset and horizon) has no
+#      volume -- this removes the first episode of each asset and the
+#      March 2026 period without volume data;
+#   3. keep only time windows in which all 4 assets remain;
+#   4. within each episode, keep the minutes from the second minute after
+#      the start through one minute before maturity (the first minute has
+#      no previous price for the price-change control).
+# CSD (cross-sectional dispersion of the 4 assets' UP log-odds) is computed
+# per minute before steps 2-4, since it is a property of the time point.
+# Output: panels/panel_{5m,15m,60m}.pkl
 import sys, io, os
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
@@ -89,8 +104,36 @@ def add_poly_vol_prev(panel: pd.DataFrame, df_raw: pd.DataFrame) -> pd.DataFrame
                         on=["asset", "slot_epoch"], how="left")
 
 
+# CSD = sample standard deviation (ddof=1) of the 4 assets' UP log-odds at the
+# same minute (obs_epoch); only minutes with all 4 assets get a value. Every
+# row (both tokens, all 4 assets) at that minute gets the same value.
+ASSET_STD = {"bitcoin": "BTC", "btc": "BTC", "ethereum": "ETH", "eth": "ETH",
+             "solana": "SOL", "sol": "SOL", "xrp": "XRP"}
+ASSETS = ["BTC", "ETH", "SOL", "XRP"]
+
+
+def compute_csd(panel: pd.DataFrame) -> pd.DataFrame:
+    yes = panel[panel["token"] == "yes"].copy()
+    yes["asset_std"] = yes["asset"].map(ASSET_STD)
+    cs = yes.groupby(["obs_epoch", "asset_std"])["log_odds"].mean().unstack("asset_std")
+    cs = cs[[a for a in ASSETS if a in cs.columns]].dropna(how="any")
+    out = cs.std(axis=1).reset_index()
+    out.columns = ["obs_epoch", "csd_raw"]
+    return out
+
+
+# Steps 2-4: drop rows without the previous episode's volume (step 2), the
+# first minute of each episode, whose delta_logit is undefined (step 4), and
+# minutes without a CSD value; then keep only time windows in which all 4
+# assets remain (step 3).
+def final_sample(panel: pd.DataFrame) -> pd.DataFrame:
+    df = panel.dropna(subset=["delta_logit", "poly_vol_prev", "csd_raw"])
+    full_window = df.groupby("slot_epoch")["asset"].transform("nunique") == N_ASSETS
+    return df[full_window].reset_index(drop=True)
+
+
 FINAL_COLS = ["episode_id", "asset", "slot_epoch", "token", "ttm", "obs_epoch",
-              "outcome", "log_odds", "delta_logit", "poly_vol_prev"]
+              "outcome", "log_odds", "delta_logit", "poly_vol_prev", "csd_raw"]
 
 for tf, cfg in TF_CFG.items():
     print(f"\n{'='*60}\n  [{tf}] build panel\n{'='*60}")
@@ -106,10 +149,14 @@ for tf, cfg in TF_CFG.items():
     panel = expand_price_history(df_raw, cfg["window_minutes"])
     panel = add_delta_logit(panel)
     panel = add_poly_vol_prev(panel, df_raw)
-    panel = panel[FINAL_COLS].sort_values(["slot_epoch", "asset", "ttm"]).reset_index(drop=True)
+    panel = panel.sort_values(["slot_epoch", "asset", "ttm"]).reset_index(drop=True)
+    panel = panel.merge(compute_csd(panel), on="obs_epoch", how="left")
 
-    print(f"  final: {panel.shape}  TTM range: {panel['ttm'].min()}~{panel['ttm'].max()}")
-    print(f"  null counts:\n{panel.isnull().sum().to_string()}")
+    n1 = len(panel)
+    panel = final_sample(panel)[FINAL_COLS]
+    print(f"  steps 2-4 (volume, 4-asset windows, first minute): {n1:,} → {len(panel):,} rows")
+    print(f"  final sample: {len(panel):,} rows  {panel['episode_id'].nunique():,} episodes  "
+          f"{panel['slot_epoch'].nunique():,} time windows  TTM range: {panel['ttm'].min()}~{panel['ttm'].max()}")
 
     out_path = os.path.join(OUT_DIR, f"panel_{tf}.pkl")
     panel.to_pickle(out_path)

@@ -13,14 +13,6 @@ os.makedirs(OUT_DIR, exist_ok=True)
 
 TF_CFG = {"5m": "panel_5m.pkl", "15m": "panel_15m.pkl", "60m": "panel_60m.pkl"}
 
-ASSET_STD = {
-    "bitcoin": "BTC", "btc": "BTC",
-    "ethereum": "ETH", "eth": "ETH",
-    "solana": "SOL", "sol": "SOL",
-    "xrp": "XRP",
-}
-ASSETS = ["BTC", "ETH", "SOL", "XRP"]
-
 TF_COLORS  = {"5m": "#2a78d6", "15m": "#eb6834", "60m": "#1baf7a"}
 TF_MARKERS = {"5m": "o", "15m": "s", "60m": "^"}
 
@@ -43,24 +35,6 @@ def sig(p) -> str:
     return "***" if p < 0.001 else ("**" if p < 0.01 else ("*" if p < 0.05 else ("." if p < 0.1 else "")))
 
 
-# CSD = cross-sectional dispersion: std(log_odds) across the 4 assets at the
-# same obs_epoch (YES token only). Only obs_epochs where all 4 assets are
-# observed are kept (build_panel.py already enforces this upstream, so
-# dropna(how="any") here is a no-op safety net, not the primary filter).
-def compute_csd(panel: pd.DataFrame) -> pd.DataFrame:
-    yes = panel[panel["token"] == "yes"].copy()
-    yes["asset_std"] = yes["asset"].map(ASSET_STD)
-    cs = (yes.groupby(["obs_epoch", "asset_std"])["log_odds"]
-             .mean()
-             .unstack("asset_std"))
-    cs = cs[[a for a in ASSETS if a in cs.columns]]
-    cs_full = cs.dropna(how="any")
-    csd = cs_full.std(axis=1)
-    out = csd.reset_index()
-    out.columns = ["obs_epoch", "csd_raw"]
-    return out
-
-
 def fit(y, groups, Xdf: pd.DataFrame):
     """Cluster-robust logistic GLM. Callers pass slot_epoch as `groups`: all 4
     assets in a time window share CSD and common shocks, so episodes in the
@@ -81,45 +55,22 @@ def coef_se_p(res, name: str, null: float = 0.0):
     return c, se, p
 
 
-# Every analysis uses one sample: rows with all of these present. This drops
-# the first tick of each episode (delta_logit is NaN there) and episodes
-# without the previous slot's volume (poly_vol_prev), so tables, figures,
-# backtest and robustness checks all share the same observations.
-ANALYSIS_NEED = ["log_odds", "delta_logit", "poly_vol_log", "csd_raw"]
-N_ASSETS = 4
-
-
 def load_analysis_panel(tf: str) -> pd.DataFrame:
-    """Load panel_{tf}.pkl and return the common analysis sample with derived
-    features. Rows missing any variable in ANALYSIS_NEED are dropped FIRST,
-    then every time window (slot) that no longer has all 4 assets is dropped
-    entirely, so each window in the sample holds the full 4-asset cross-section
-    that CSD summarises. The centering (ttm_c: ttm minus its median, csd_q_c:
-    CSD percentile rank minus 0.5) and every interaction are then computed on
-    that sample, so the centering refers to the observations actually analysed.
-    Because every kept timestamp has the same number of rows (4 assets x 2
-    tokens), ranking rows is equivalent to ranking timestamps.
-
-    CSD itself (compute_csd) is computed on the full panel: it is a property
-    of the time point (std across all 4 assets' prices), not of which rows
-    survive the volume filter. delta_logit is used as-is from the panel pkl
-    (computed once in build_panel.py) rather than recomputed here, to avoid
-    two copies of the same logic drifting out of sync."""
-    panel = pd.read_pickle(os.path.join(PNL_DIR, TF_CFG[tf]))
-
-    panel["poly_vol_log"] = np.log1p(panel["poly_vol_prev"].clip(lower=0))
-    panel = panel.merge(compute_csd(panel), on="obs_epoch", how="left")
-    df = panel.dropna(subset=ANALYSIS_NEED)
-    full_window = df.groupby("slot_epoch")["asset"].transform("nunique") == N_ASSETS
-    df = df[full_window].reset_index(drop=True)
-
-    df["ttm_c"]      = df["ttm"] - df["ttm"].median()
-    df["lo_x_ttm"]   = df["log_odds"] * df["ttm_c"]
-    df["lo_x_delta"] = df["log_odds"] * df["delta_logit"]
-    df["lo_x_vol"]   = df["log_odds"] * df["poly_vol_log"]
-    df["csd_q_c"]    = df["csd_raw"].rank(pct=True) - 0.5
-    df["lo_x_csd"]   = df["log_odds"] * df["csd_q_c"]
-    df["price"]      = 1.0 / (1.0 + np.exp(-df["log_odds"]))
+    """Load panels/panel_{tf}.pkl, which build_panel.py has already reduced to
+    the analysis sample (paper Section 2), and add the analysis variables. The
+    centering (ttm_c: ttm minus its median; csd_q_c: percentile rank of the
+    raw CSD minus 0.5) is computed on this sample. Every minute in the sample
+    has the same number of rows (4 assets x 2 contracts), so ranking rows is
+    equivalent to ranking minutes."""
+    df = pd.read_pickle(os.path.join(PNL_DIR, TF_CFG[tf]))
+    df["poly_vol_log"] = np.log1p(df["poly_vol_prev"].clip(lower=0))
+    df["ttm_c"]        = df["ttm"] - df["ttm"].median()
+    df["lo_x_ttm"]     = df["log_odds"] * df["ttm_c"]
+    df["lo_x_delta"]   = df["log_odds"] * df["delta_logit"]
+    df["lo_x_vol"]     = df["log_odds"] * df["poly_vol_log"]
+    df["csd_q_c"]      = df["csd_raw"].rank(pct=True) - 0.5
+    df["lo_x_csd"]     = df["log_odds"] * df["csd_q_c"]
+    df["price"]        = 1.0 / (1.0 + np.exp(-df["log_odds"]))
     return df
 
 

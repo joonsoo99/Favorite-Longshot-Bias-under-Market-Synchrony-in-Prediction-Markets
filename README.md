@@ -11,7 +11,7 @@ Polymarket's BTC/ETH/SOL/XRP "Up or Down" markets at the 5-, 15- and
 | Path | Purpose |
 |---|---|
 | `download/` | data collection from Polymarket's public API |
-| `build_panel.py` | sample construction (minute-level panel) |
+| `build_panel.py` | sample construction: the four steps of the paper's Section 2, producing the minute-level analysis sample |
 | `analysis/` | main tables and figures |
 | `model_eval/` | variance inflation factors, Newey–West tests and transaction-cost analysis |
 
