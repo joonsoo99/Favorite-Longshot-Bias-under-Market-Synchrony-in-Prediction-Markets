@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-# Figure 1 (headline result): calibration slope beta(log_odds) declines as
-# CSD (cross-sectional dispersion across the 4 assets) rises. Bins the
-# sample into CSD deciles per timeframe, fits the base model (log_odds +
-# lo_x_ttm + delta_logit) separately in each bin (cluster-robust by
-# time window, slot_epoch), and plots beta with its 95% CI against a beta=1 reference line.
+# Figure 1 (headline result): the calibration slope (coefficient on logit(P))
+# declines as CSD (cross-sectional dispersion across the 4 assets) rises.
+# Bins the sample into raw-CSD deciles per horizon, fits Eq. (7) (logit,
+# Δlogit, logit×ttm) separately in each bin (cluster-robust by time window),
+# and plots the slope with its 95% CI against a beta=1 reference line.
 import sys, io, os
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
@@ -74,10 +74,10 @@ for tf in TF_CFG:
                 label=tf, zorder=3)
 
 ax.set_xticks(range(1, N_BINS + 1))
-ax.set_xticklabels([f"Q{i}\n(low)" if i == 1 else (f"Q{i}\n(high)" if i == N_BINS else f"Q{i}")
+ax.set_xticklabels([f"{i}\n(low)" if i == 1 else (f"{i}\n(high)" if i == N_BINS else f"{i}")
                      for i in range(1, N_BINS + 1)])
-ax.set_xlabel("CSD quantile (cross-sectional dispersion)", color="#0b0b0b", fontsize=11)
-ax.set_ylabel("Estimated calibration slope  β(log_odds)", color="#0b0b0b", fontsize=11)
+ax.set_xlabel("CSD decile", color="#0b0b0b", fontsize=11)
+ax.set_ylabel("Calibration slope β", color="#0b0b0b", fontsize=11)
 ax.legend(frameon=False, loc="upper right", fontsize=9)
 
 fig.tight_layout()

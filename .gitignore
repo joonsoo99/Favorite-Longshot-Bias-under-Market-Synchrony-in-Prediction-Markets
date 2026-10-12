@@ -5,3 +5,6 @@ output/
 download/raw_output/
 results/
 .venv/
+# local-only notes and robustness checks not reported in the paper
+METHODS.md
+model_eval/model_comparison.py

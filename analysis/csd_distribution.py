@@ -29,9 +29,9 @@ for ax, (tf, fname) in zip(axes, TF_CFG.items()):
     ax.axvline(med_v, color="#0b0b0b", linewidth=1.8, linestyle="-", label=f"median={med_v:.2f}")
     ax.axvline(mean_v, color="#0b0b0b", linewidth=1.8, linestyle="--", label=f"mean={mean_v:.2f}")
     ax.set_title(f"{tf}  (skew={csd.skew():.2f})", fontsize=12, fontweight="bold")
-    ax.set_xlabel("CSD (raw std of log-odds)", fontsize=10)
+    ax.set_xlabel("Raw CSD", fontsize=10)
     if ax is axes[0]:
-        ax.set_ylabel("Frequency (obs_epoch)", fontsize=10)
+        ax.set_ylabel("Frequency (minutes)", fontsize=10)
     ax.legend(frameon=False, fontsize=8.5, loc="upper right")
     print(f"{tf}  mean={mean_v:.3f}  median={med_v:.3f}  skew={csd.skew():.3f}  "
           f"max={csd.max():.3f}  p99={csd.quantile(0.99):.3f}")

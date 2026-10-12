@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Supplementary statistics for the Table 7 backtest (analysis/equity_curve.py).
-# Same setup as Table 7: BACKTEST_MODEL_SPECS (M1 price only, M2 base,
-# M3 = M2 + logit x CSD), in-sample fits, edge threshold and fee 0.015, the
+# Same setup as Table 7: BACKTEST_MODEL_SPECS (M1 = Eq. (1), M2 = Eq. (7),
+# M3 = Eq. (11)), in-sample fits, threshold and cost 0.015, the
 # common analysis sample, load_analysis_panel(tf) (first tick of each
 # episode excluded via delta_logit). Trade counts and total PnL are
 # checked against results/table7_backtest.csv before anything is computed.
@@ -14,15 +14,15 @@
 #    lags = floor(4 (T/100)^(2/9)), one-sided test H1: mean > 0. Rows where
 #    both compared models have no trades are left blank.
 # 2. Mid-price at entry (actual trades only): summary statistics and a
-#    histogram on [0, 1] with 20 bins of width 0.05.
+#    histogram on [0, 1] with 20 bins of width 0.05 (inputs to Table C.1).
 # 3. Transaction costs (manuscript Table C.1): entry mid-price statistics,
 #    all-taker cost per trade, and total PnL under the fixed $0.015 cost vs
 #    the all-taker cost.
 #
 # Outputs: results/table7_backtest_nw_tests.csv (NW t column of manuscript
 # Table 7), results/tableC1_transaction_costs.csv (Table C.1), and
-# model_eval/results/mid_price_summary.csv, mid_price_hist.csv,
-# FIG_mid_price_hist. results/table7_backtest.csv is only read.
+# model_eval/results/mid_price_summary.csv, mid_price_hist.csv.
+# results/table7_backtest.csv is only read.
 import sys, io, os
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
@@ -38,11 +38,8 @@ import pandas as pd
 import statsmodels.api as sm
 from scipy import stats as sp_stats
 
-import matplotlib.pyplot as plt
-
-from common import (TF_CFG, BACKTEST_MODEL_SPECS, BACKTEST_MODEL_COLORS,
-                     BACKTEST_EDGE_THRESH, BACKTEST_FEE, FIG_DPI, fit, load_analysis_panel,
-                     trade_mask, trade_cost_pnl, style_axes, save_fig, setup_plot_rc)
+from common import (TF_CFG, BACKTEST_MODEL_SPECS, BACKTEST_EDGE_THRESH, BACKTEST_FEE,
+                     fit, load_analysis_panel, trade_mask, trade_cost_pnl)
 
 OUT_DIR = os.path.join(HERE, "results")
 os.makedirs(OUT_DIR, exist_ok=True)
@@ -139,47 +136,6 @@ for _, s in summary[summary.n_trades > 0].iterrows():
     })
 costs = pd.DataFrame(cost_rows)
 costs.to_csv(os.path.join(PAPER_DIR, "tableC1_transaction_costs.csv"), index=False, encoding="utf-8-sig")
-
-
-
-# Entry mid-price histogram as a figure: one panel per horizon, each model as
-# a step line of the share of its trades per 0.05 bin (models differ in trade
-# count by ~80x, so counts are normalized). Line style doubles the color so
-# models stay distinguishable in grayscale / for color-vision deficiency.
-# Trades cluster on favorites, so the x-axis starts at X_MIN; any trades
-# below it are counted in a panel note rather than silently cropped.
-LINESTYLE = {"M1": "-", "M2": "--", "M3": ":"}
-X_MIN = 0.4
-setup_plot_rc()
-fig, axes = plt.subplots(1, 3, figsize=(7.5, 2.9), dpi=FIG_DPI, sharey=True)
-fig.patch.set_facecolor("#fcfcfb")
-for ax, tf in zip(axes, TF_CFG):
-    style_axes(ax)
-    absent, below = [], 0
-    keep = BINS[:-1] >= X_MIN - 1e-9
-    for m, spec in MODELS.items():
-        h = hist[(hist.tf == tf) & (hist.model == m)]
-        total = h["count"].sum()
-        if total == 0:
-            absent.append(m)
-            continue
-        share = h["count"].values / total * 100
-        below += int(h["count"].values[~keep].sum())
-        ax.stairs(share[keep], BINS[np.r_[keep, True]], color=BACKTEST_MODEL_COLORS[spec],
-                  linestyle=LINESTYLE[m], linewidth=2, label=f"{m} (n={total:,})")
-    ax.set_title(tf, fontsize=9, fontweight="bold")
-    ax.set_xlim(X_MIN, 1)
-    notes = ([f"{', '.join(absent)}: no trades"] if absent else []) + \
-            ([f"{below:,} trades below {X_MIN} not shown"] if below else [])
-    if notes:
-        ax.text(0.03, 0.62, "\n".join(notes), transform=ax.transAxes, fontsize=6.5, color="#52514e")
-    ax.set_xlabel("Mid-price at entry", fontsize=7.5)
-    if ax is axes[0]:
-        ax.set_ylabel("Share of trades (%)", fontsize=7.5)
-    ax.tick_params(labelsize=7)
-    ax.legend(frameon=False, fontsize=6.5, loc="upper left", handlelength=2.2)
-fig.tight_layout()
-save_fig(fig, os.path.join(OUT_DIR, "FIG_mid_price_hist"))
 
 pd.set_option("display.width", 200)
 print("\n" + tests.to_string(index=False, float_format=lambda x: f"{x:.4f}"))

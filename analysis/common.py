@@ -24,6 +24,8 @@ ASSETS = ["BTC", "ETH", "SOL", "XRP"]
 TF_COLORS  = {"5m": "#2a78d6", "15m": "#eb6834", "60m": "#1baf7a"}
 TF_MARKERS = {"5m": "o", "15m": "s", "60m": "^"}
 
+# Backtest models (Table 7, Figure 2): M1 = Eq. (1) basic calibration,
+# M2 = Eq. (7) control-augmented, M3 = Eq. (11) CSD-augmented.
 BACKTEST_MODEL_SPECS = {
     "M1_price_only": ["log_odds"],
     "M2_baseline":   ["log_odds", "delta_logit", "lo_x_ttm"],

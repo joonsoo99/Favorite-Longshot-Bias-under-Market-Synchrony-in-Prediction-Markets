@@ -115,7 +115,7 @@ out = pd.DataFrame(rows)[["tf", "model", "n_trades", "total_cost", "total_pnl", 
 csv_path = os.path.join(OUT_DIR, "table7_backtest.csv")
 out.to_csv(csv_path, index=False, encoding="utf-8-sig")
 
-print(f"\n{'='*96}\n  Table 5+6 combined: backtest performance and risk-adjusted metrics\n{'='*96}")
+print(f"\n{'='*96}\n  Table 7: backtest performance and risk-adjusted metrics\n{'='*96}")
 header = (f"{'tf':>4} {'model':<14} {'trades':>9} {'ROI%':>7} {'win%':>6} "
           f"{'PnL$':>10} {'MDD$':>10} {'AnnPnL$':>10} {'Calmar':>7}")
 print(header)
